@@ -1,4 +1,4 @@
-const CACHE = 'futbol-v4';
+const CACHE = 'futbol-v5';
 const API = CACHE + '-api';
 const SHELL = ['./', './index.html', './estilos.css', './app.js', './datos.js', './logica.js', './ligas.js', './manifest.webmanifest', './icon.svg', './icon-192.png', './icon-512.png', './apple-touch-icon.png'];
 self.addEventListener('install', e => e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())));

@@ -1,5 +1,5 @@
 import { ligas, equipos } from './ligas.js';
-import { hora, dia, fechaHora, competidores, foco, vivo, agrupar, paralelo, estadoPartido, finalizado, marcador, resumenEquipo, eventosClave, posicion } from './logica.js';
+import { hora, dia, fechaAmigable, competidores, foco, vivo, agrupar, paralelo, estadoPartido, finalizado, marcador, resumenEquipo, eventosClave, posicion } from './logica.js';
 import { base, pedir } from './datos.js';
 const app = document.querySelector('#app');
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({
@@ -11,17 +11,25 @@ const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({
 })[c]);
 const imagen = t => {
   const u = t?.logo || t?.logos?.[0]?.href;
-  return u && /^https:\/\//.test(u) ? `<img src="${esc(u)}" alt="Escudo de ${esc(t.displayName || t.name)}" loading="lazy">` : '';
+  return u && /^https:\/\//.test(u) ? `<img src="${esc(u)}" alt="Escudo de ${esc(t.displayName || t.name)}" loading="lazy">` : `<span class="iniciales" aria-hidden="true">${esc((t?.displayName || t?.name || 'Equipo').split(/\s+/).map(n => n[0]).slice(0, 2).join(''))}</span>`;
 };
 const nombre = t => esc(t?.displayName || t?.name || 'Equipo');
 const puntaje = c => esc(marcador(c));
-const estado = e => vivo(e) ? `<span class="live">EN VIVO · ${esc(estadoPartido(e).displayClock || estadoPartido(e).type.shortDetail || '')}</span>` : finalizado(e) ? 'Final' : 'Programado';
-
-function tarjeta(e) {
+const estado = e => vivo(e) ? `<span class="estado live">EN VIVO · ${esc(estadoPartido(e)?.displayClock || estadoPartido(e)?.type?.shortDetail || '')}</span>` : finalizado(e) ? '<span class="estado final">Final</span>' : '';
+const colorEquipo = id => ({202: '#75aadb', 9743: '#0a7a3d', 20232: '#f7b5cd'}[id] || '#3ddc84');
+const skeleton = '<div class="skeletons" role="status" aria-label="Cargando"><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>';
+const titulo = texto => '<div class="titulo"><h1>' + texto + '</h1>' + botonReintentar + '</div>';
+function tarjeta(e, detalle = false) {
   const cs = competidores(e);
   const a = cs.find(c => c.homeAway === 'home') || cs[0];
   const b = cs.find(c => c.homeAway === 'away') || cs[1];
-  return `<a class="card partido ${foco(e) ? 'destacado' : ''}" href="#/partido/${encodeURIComponent(e.slug)}/${encodeURIComponent(e.id)}"><small>${esc(ligas.find(l => l.slug === e.slug)?.nombre)} · ${e.date ? fechaHora(e.date) : ''}</small><div class="equipos"><span class="equipo">${imagen(a?.team)}${nombre(a?.team)}</span><span class="marcador">${puntaje(a)} : ${puntaje(b)}</span><span class="equipo">${imagen(b?.team)}${nombre(b?.team)}</span></div>${estado(e)}</a>`;
+  const jugado = vivo(e) || finalizado(e);
+  const numero = (c, rival) => '<span class="' + (Number(marcador(c)) < Number(marcador(rival)) ? 'perdedor' : '') + '">' + puntaje(c) + '</span>';
+  const favorito = cs.find(c => equipos.some(eq => eq.id === String(c.team?.id)));
+  const contenido = `<div class="partido-meta"><span class="chip">${esc(ligas.find(l => l.slug === e.slug)?.nombre)}</span><small>${e.date ? esc(fechaAmigable(e.date)) : 'Fecha a confirmar'}</small></div><div class="equipos"><span class="equipo">${imagen(a?.team)}<span class="nombre-equipo">${nombre(a?.team)}</span></span><div class="centro"><span class="marcador">${jugado ? numero(a,b) + ' - ' + numero(b,a) : e.date ? esc(hora(e.date)) : 'A confirmar'}</span>${estado(e)}</div><span class="equipo">${imagen(b?.team)}<span class="nombre-equipo">${nombre(b?.team)}</span></span></div>${detalle && e.date ? '<p class="muted fecha-detalle">' + esc(dia(e.date)) + ' · ' + esc(hora(e.date)) + '</p>' : ''}`;
+  const clase = `card partido ${foco(e) ? 'destacado' : ''} ${detalle ? 'marcador-detalle' : ''}`;
+  const estilo = 'style="--equipo-color:' + colorEquipo(favorito?.team?.id) + '"';
+  return detalle ? `<section class="${clase}" ${estilo}>${contenido}</section>` : `<a class="${clase}" ${estilo} href="#/partido/${encodeURIComponent(e.slug)}/${encodeURIComponent(e.id)}">${contenido}</a>`;
 }
 let fecha = dia(new Date()),
   grupo = 'Todas',
@@ -32,9 +40,9 @@ let fecha = dia(new Date()),
 function avisos(resultados) {
   const fallos = resultados.filter(r => !r.ok).length;
   const viejos = resultados.some(r => r.ok && r.valor.obsoleto);
-  return `${fallos ? `<p class="aviso">No pudimos cargar ${fallos} consulta(s). Podés volver a intentar.</p>` : ''}${viejos ? '<p class="aviso">Mostrando datos guardados. No pudimos actualizarlos.</p>' : ''}`;
+  return `${fallos ? `<p class="aviso">ⓘ No pudimos cargar ${fallos} consulta(s). Podés volver a intentar.</p>` : ''}${viejos ? '<p class="aviso">ⓘ Mostrando datos guardados. No pudimos actualizarlos.</p>' : ''}`;
 }
-const botonReintentar = '<button id="actualizar">Actualizar</button>';
+const botonReintentar = '<button id="actualizar" class="actualizar" aria-label="Actualizar" title="Actualizar">↻</button>';
 
 function enlazarActualizar() {
   document.querySelector('#actualizar')?.addEventListener('click', () => render());
@@ -51,7 +59,7 @@ async function inicio(v) {
     ...t
   }));
   if (v !== version) return;
-  let html = '<h1>Mis equipos</h1>' + botonReintentar + avisos(rs);
+  let html = titulo('Mis equipos') + avisos(rs);
   for (const eq of equipos) {
     const eventos = new Map();
     for (const r of rs) {
@@ -66,11 +74,14 @@ async function inicio(v) {
     }
     const {
       ultimo,
-      proximo,
       vivos
     } = resumenEquipo(eventos.values());
+    const proximo = resumenEquipo([...eventos.values()].filter(e => !vivo(e))).proximo;
     hayVivo ||= vivos.length > 0;
-    html += `<section><h2>${esc(eq.nombre)}</h2>${vivos.map(tarjeta).join('')}<h3>Último resultado</h3>${ultimo ? tarjeta(ultimo) : '<p class="muted">No hay resultados disponibles.</p>'}<h3>Próximo partido</h3>${proximo ? tarjeta(proximo) : '<p class="muted">No hay próximos partidos disponibles.</p>'}</section>`;
+    const equipoEvento = [...eventos.values()].flatMap(competidores).find(c => String(c.team?.id) === eq.id)?.team;
+    const logo = equipoEvento?.logo || equipoEvento?.logos?.[0]?.href || (eq.id === '202' ? 'https://a.espncdn.com/i/teamlogos/countries/500/arg.png' : 'https://a.espncdn.com/i/teamlogos/soccer/500/' + eq.id + '.png');
+    html += `<section class="hero hero-${eq.id}" style="--equipo-color:${colorEquipo(eq.id)}"><div class="hero-titulo">${imagen({displayName:eq.nombre,logo})}<h2>${esc(eq.nombre)}</h2></div>${vivos.length ? '<h3>EN VIVO</h3>' + vivos.map(e => tarjeta(e)).join('') : ''}<h3>Próximo</h3>${proximo && !vivo(proximo) ? tarjeta(proximo) : '<p class="muted">No hay próximos partidos disponibles.</p>'}<h3>Último</h3>${ultimo ? tarjeta(ultimo) : '<p class="muted">No hay resultados disponibles.</p>'}</section>`;
+
   }
   app.innerHTML = html;
   enlazarActualizar();
@@ -84,9 +95,14 @@ function mover(n) {
 }
 
 async function partidos(v) {
-  app.innerHTML = `<h1>Partidos</h1><div class="controles"><button id="anterior" aria-label="Día anterior">←</button><button data-dia="-1">Ayer</button><button data-dia="0">Hoy</button><button data-dia="1">Mañana</button><button id="siguiente" aria-label="Día siguiente">→</button><label>Fecha <input id="fecha" type="date" value="${fecha}"></label></div><div class="chips" aria-label="Grupo de competición">${['Todas', ...new Set(ligas.map(l => l.grupo))].map(g => `<button data-grupo="${esc(g)}" aria-pressed="${g === grupo}">${esc(g)}</button>`).join('')}</div>${botonReintentar}<div id="lista">Cargando partidos…</div>`;
-  document.querySelector('#anterior').onclick = () => mover(-1);
-  document.querySelector('#siguiente').onclick = () => mover(1);
+  const dias = Array.from({length:11}, (_, i) => {
+    const d = new Date(dia(new Date()) + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + i - 3);
+    const valor = dia(d);
+    return `<button data-dia="${i - 3}" aria-pressed="${valor === fecha}">${esc(fechaAmigable(d))}</button>`;
+  }).join('');
+  app.innerHTML = `${titulo('Partidos')}<div class="controles" aria-label="Día de partidos">${dias}<label class="calendario" aria-label="Elegir fecha">📅<input id="fecha" aria-label="Elegir fecha" type="date" value="${fecha}"></label></div><div class="chips" aria-label="Grupo de competición">${['Todas', ...new Set(ligas.map(l => l.grupo))].map(g => `<button data-grupo="${esc(g)}" aria-pressed="${g === grupo}">${esc(g)}</button>`).join('')}</div><div id="lista">${skeleton}</div>`;
+  document.querySelector('[data-dia][aria-pressed="true"]')?.scrollIntoView({block:'nearest', inline:'center'});
   document.querySelector('#fecha').onchange = e => {
     if (e.target.value) {
       fecha = e.target.value;
@@ -114,7 +130,7 @@ async function partidos(v) {
   })) : []);
   hayVivo = eventos.some(vivo);
   const destacados = eventos.filter(foco).sort((a, b) => new Date(a.date) - new Date(b.date));
-  document.querySelector('#lista').innerHTML = avisos(rs) + (destacados.length ? '<h2>Mis equipos</h2>' + destacados.map(tarjeta).join('') : '') + agrupar(eventos, elegidas).map(l => `<section><h2>${esc(l.nombre)}</h2>${l.eventos.map(tarjeta).join('')}</section>`).join('') + (!eventos.length ? '<p>No hay partidos disponibles para esta fecha y filtro.</p>' : '');
+  document.querySelector('#lista').innerHTML = avisos(rs) + (destacados.length ? '<h2>Mis equipos</h2>' + destacados.map(e => tarjeta(e)).join('') : '') + agrupar(eventos, elegidas).map(l => `<section><h2 class="competicion">${esc(l.nombre)} <span>${l.eventos.length} partidos</span></h2>${l.eventos.map(e => tarjeta(e)).join('')}</section>`).join('') + (!eventos.length ? '<p>No hay partidos disponibles para esta fecha y filtro.</p>' : '');
 }
 // possessionPct viene como 60.4 y passPct como 0.9: se muestran ambos como %.
 const porcentaje = (key, v) => v == null ? v : key === 'possessionPct' ? Math.round(parseFloat(v)) + '%' : key === 'passPct' ? Math.round(parseFloat(v) * 100) + '%' : v;
@@ -147,26 +163,47 @@ async function detalle(slug, id, v) {
     competitions: [c]
   };
   hayVivo = vivo(e);
-  const teams = d.boxscore?.teams || [];
+  const locales = competidores(e).find(c => c.homeAway === 'home')?.team?.id;
+  const teams = [...(d.boxscore?.teams || [])].sort((a,b) => Number(String(b.team?.id) === String(locales)) - Number(String(a.team?.id) === String(locales)));
   let stats = '';
   for (const [key, label] of Object.entries(estadisticas)) {
-    const values = teams.slice(0, 2).map(t => porcentaje(key, t.statistics?.find(s => s.name === key)?.displayValue));
+    const values = [teams[0], teams[1]].map(t => porcentaje(key, t?.statistics?.find(s => s.name === key)?.displayValue));
     if (values.every(x => x == null)) continue;
     const nums = values.map(x => parseFloat(x) || 0),
       total = nums[0] + nums[1];
-    stats += `<div class="dato"><span>${esc(values[0] ?? '—')}</span><span>${label}</span><span>${esc(values[1] ?? '—')}</span></div><div class="barra" role="img" aria-label="${label}: ${esc(values[0] ?? 'sin dato')} a ${esc(values[1] ?? 'sin dato')}"><span style="width:${total ? 100 * nums[0] / total : 50}%"></span></div>`;
+    stats += `<div class="dato"><span>${esc(values[0] ?? '—')}</span><span>${label}</span><span>${esc(values[1] ?? '—')}</span></div><div class="barra" role="img" aria-label="${label}: ${esc(values[0] ?? 'sin dato')} a ${esc(values[1] ?? 'sin dato')}">${nums.map((n,i) => `<span class="mitad mitad-${i}"><i class="${n >= nums[1-i] ? 'mayor' : 'menor'}" style="width:${total ? 100 * n / total : 0}%"></i></span>`).join('')}</div>`;
   }
-  const eventos = eventosClave(d.keyEvents || []).map(texto => `<li>${esc(texto)}</li>`).join('');
-  const formaciones = (d.rosters || []).map(t => {
+  const eventos = (d.keyEvents || []).flatMap(ev => eventosClave([ev]).map(texto => {
+    const minuto = ev.clock?.displayValue || ev.time?.displayValue || '—';
+    const contenido = ev.clock?.displayValue || ev.time?.displayValue ? texto.replace(/^\S+\s/, '') : texto;
+    return `<li class="${ev.team?.id != null && String(ev.team.id) !== String(locales) ? 'visitante' : 'local'}"><span class="minuto">${esc(minuto)}</span><span>${esc(contenido)}</span></li>`;
+  })).join('');
+  const formaciones = (d.rosters || []).map((t, i) => {
     const jugadores = t.roster || [];
-    const fila = p => `<li>${esc(p.jersey || p.athlete?.jersey || '—')} · ${esc(p.athlete?.displayName)} <small>${esc(posicion(p.position?.abbreviation))}${p.subbedIn ? ' · Ingresó' : ''}${p.subbedOut ? ' · Salió' : ''}</small></li>`;
-    return `<section class="card"><h3>${nombre(t.team)} ${esc(t.formation || '')}</h3>${jugadores.some(p => p.starter) ? '<h4>Titulares</h4><ul>' + jugadores.filter(p => p.starter).sort((a, b) => (a.formationPlace || 0) - (b.formationPlace || 0)).map(fila).join('') + '</ul><h4>Suplentes</h4><ul>' + jugadores.filter(p => !p.starter).map(fila).join('') + '</ul>' : '<p>Formaciones aún no confirmadas.</p>'}</section>`;
+    const fila = p => `<li><span class="dorsal">${esc(p.jersey || p.athlete?.jersey || '—')}</span><span>${esc(p.athlete?.displayName)} <small class="posicion">${esc(posicion(p.position?.abbreviation))}${p.subbedIn ? '<span class="entra" aria-label="Ingresó"> ↑</span>' : ''}${p.subbedOut ? '<span class="sale" aria-label="Salió"> ↓</span>' : ''}</small></span></li>`;
+    return `<section class="card formacion" data-formacion="${i}" ${i ? 'hidden' : ''}><h3>${nombre(t.team)} <strong class="esquema">${esc(t.formation || '')}</strong></h3>${jugadores.some(p => p.starter) ? '<h4>Titulares</h4><ul>' + jugadores.filter(p => p.starter).sort((a, b) => (a.formationPlace || 0) - (b.formationPlace || 0)).map(fila).join('') + '</ul><h4>Suplentes</h4><ul>' + jugadores.filter(p => !p.starter).map(fila).join('') + '</ul>' : '<p>Formaciones aún no confirmadas.</p>'}</section>`;
   }).join('');
   const arbitros = d.gameInfo?.officials?.map(o => o.fullName || o.displayName).filter(Boolean).join(', ');
-  app.innerHTML = `<a href="#/partidos">← Partidos</a><h1>Detalle del partido</h1>${botonReintentar}${avisos([{
-    ok: true,
-    valor: r
-  }])}${tarjeta(e)}<p>Estadio: ${esc(d.gameInfo?.venue?.fullName || c.venue?.fullName || 'Sin confirmar')}<br>Árbitro: ${esc(arbitros || 'Sin confirmar')}</p><h2>Goles y eventos</h2>${eventos ? '<ul>' + eventos + '</ul>' : '<p>No hay eventos disponibles.</p>'}<h2>Estadísticas</h2>${teams.length ? `<div class="dato"><strong>${nombre(teams[0]?.team)}</strong><strong>${nombre(teams[1]?.team)}</strong></div>` : ''}${stats || '<p>Estadísticas aún no disponibles.</p>'}<h2>Formaciones</h2><div class="columnas">${formaciones || '<p>Formaciones aún no confirmadas.</p>'}</div>`;
+  app.innerHTML = `<a class="volver" href="#/partidos">← Partidos</a>${titulo('Detalle del partido')}${avisos([{ok:true,valor:r}])}${tarjeta(e,true)}<div class="segmentos" role="tablist" aria-label="Detalle del partido">${['Resumen','Estadísticas','Formaciones'].map((t,i) => `<button id="tab-${i}" role="tab" aria-controls="panel-${i}" aria-selected="${i === 0}" tabindex="${i === 0 ? 0 : -1}" data-panel="${i}">${t}</button>`).join('')}</div><section id="panel-0" role="tabpanel" aria-labelledby="tab-0"><h2>Goles y eventos</h2>${eventos ? '<ul class="timeline">' + eventos + '</ul>' : '<p class="muted">No hay eventos disponibles.</p>'}</section><section id="panel-1" role="tabpanel" aria-labelledby="tab-1" hidden><h2>Estadísticas</h2>${teams.length ? '<div class="dato"><strong>' + nombre(teams[0]?.team) + '</strong><strong>' + nombre(teams[1]?.team) + '</strong></div>' : ''}${stats || '<p class="muted">Estadísticas aún no disponibles.</p>'}</section><section id="panel-2" role="tabpanel" aria-labelledby="tab-2" hidden><h2>Formaciones</h2><div class="chips">${(d.rosters || []).map((t,i) => `<button data-equipo="${i}" aria-pressed="${i === 0}">${imagen(t.team)}${nombre(t.team)}</button>`).join('')}</div>${formaciones || '<p class="muted">Formaciones aún no confirmadas.</p>'}</section><footer class="info"><p>⌖ Estadio <span>${esc(d.gameInfo?.venue?.fullName || c.venue?.fullName || 'Sin confirmar')}</span></p><p>♧ Árbitro <span>${esc(arbitros || 'Sin confirmar')}</span></p></footer>`;
+  const tabs = [...document.querySelectorAll('[data-panel]')];
+  tabs.forEach((b,i) => {
+    b.onclick = () => tabs.forEach(t => {
+      const activo = t === b;
+      t.setAttribute('aria-selected', activo);
+      t.tabIndex = activo ? 0 : -1;
+      document.querySelector('#panel-' + t.dataset.panel).hidden = !activo;
+    });
+    b.onkeydown = ev => {
+      if (!['ArrowLeft','ArrowRight','Home','End'].includes(ev.key)) return;
+      ev.preventDefault();
+      const n = ev.key === 'Home' ? 0 : ev.key === 'End' ? tabs.length - 1 : (i + (ev.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[n].click(); tabs[n].focus();
+    };
+  });
+  document.querySelectorAll('[data-equipo]').forEach(b => b.onclick = () => {
+    document.querySelectorAll('[data-equipo]').forEach(t => t.setAttribute('aria-pressed', t === b));
+    document.querySelectorAll('[data-formacion]').forEach(t => t.hidden = t.dataset.formacion !== b.dataset.equipo);
+  });
   enlazarActualizar();
 }
 
@@ -180,7 +217,7 @@ function tablasDe(n) {
 }
 
 async function tablas(v) {
-  app.innerHTML = `<h1>Tablas</h1><label>Competición <select id="liga">${ligas.map(l => `<option value="${l.slug}" ${l.slug === seleccion ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}</select></label> ${botonReintentar}<div id="tabla">Cargando posiciones…</div>`;
+  app.innerHTML = `${titulo('Tablas')}<label>Competición <select id="liga">${ligas.map(l => `<option value="${l.slug}" ${l.slug === seleccion ? 'selected' : ''}>${esc(l.nombre)}</option>`).join('')}</select></label><div id="tabla">${skeleton}</div>`;
   document.querySelector('#liga').onchange = e => {
     seleccion = e.target.value;
     render();
@@ -192,7 +229,7 @@ async function tablas(v) {
   document.querySelector('#tabla').innerHTML = avisos([{
     ok: true,
     valor: r
-  }]) + (ts.map(t => `<h2>${esc(t.nombre)}</h2><div class="scroll"><table><caption>${esc(ligas.find(l => l.slug === seleccion)?.nombre)} · ${esc(t.nombre)}</caption><thead><tr><th scope="col">Equipo</th>${[['rank', '#'], ['gamesPlayed', 'PJ'], ['wins', 'PG'], ['ties', 'PE'], ['losses', 'PP'], ['pointDifferential', 'DG'], ['points', 'Pts']].map(([k, label]) => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${t.entries.map(en => `<tr><th scope="row">${imagen(en.team)} ${nombre(en.team)}</th>${['rank', 'gamesPlayed', 'wins', 'ties', 'losses', 'pointDifferential', 'points'].map(k => `<td>${esc(en.stats?.find(s => s.name === k)?.displayValue ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('') || '<p>Esta competición no tiene tabla disponible.</p>');
+  }]) + (ts.map(t => `<h2>${esc(t.nombre)}</h2><div class="scroll"><table><caption>${esc(ligas.find(l => l.slug === seleccion)?.nombre)} · ${esc(t.nombre)}</caption><thead><tr><th scope="col">#</th><th scope="col">Equipo</th>${[['gamesPlayed', 'PJ'], ['wins', 'PG'], ['ties', 'PE'], ['losses', 'PP'], ['pointDifferential', 'DG'], ['points', 'Pts']].map(([k, label]) => `<th scope="col">${label}</th>`).join('')}</tr></thead><tbody>${t.entries.map(en => `<tr class="${equipos.some(eq => eq.id === String(en.team?.id)) ? 'fila-foco' : ''}"><td class="rango">${esc(en.stats?.find(s => s.name === 'rank')?.displayValue ?? '—')}</td><th scope="row"><span class="tabla-equipo">${imagen(en.team)} <span>${nombre(en.team)}</span></span></th>${['gamesPlayed', 'wins', 'ties', 'losses', 'pointDifferential', 'points'].map(k => `<td>${esc(en.stats?.find(s => s.name === k)?.displayValue ?? '—')}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`).join('') || '<p>Esta competición no tiene tabla disponible.</p>');
 }
 
 async function render() {
@@ -200,14 +237,17 @@ async function render() {
   hayVivo = false;
   const [pantalla, slug, id] = (location.hash.slice(2) || 'inicio').split('/');
   document.querySelectorAll('nav a').forEach(a => {
-    if (a.hash === '#/' + pantalla) a.setAttribute('aria-current', 'page');else a.removeAttribute('aria-current');
+    if (a.hash === '#/' + (pantalla === 'partido' ? 'partidos' : pantalla)) a.setAttribute('aria-current', 'page');else a.removeAttribute('aria-current');
   });
-  app.innerHTML = '<p>Cargando…</p>';
+  app.innerHTML = skeleton;
+  app.classList.remove('entrada');
+  void app.offsetWidth;
+  app.classList.add('entrada');
   try {
     if (pantalla === 'inicio') await inicio(v);else if (pantalla === 'partidos') await partidos(v);else if (pantalla === 'partido') await detalle(slug, id, v);else if (pantalla === 'tablas') await tablas(v);else app.innerHTML = '<h1>Página no encontrada</h1><a href="#/inicio">Volver al inicio</a>';
   } catch {
     if (v === version) {
-      app.innerHTML = '<h1>No pudimos cargar los datos</h1><p>Revisá tu conexión y volvé a intentar.</p>' + botonReintentar;
+      app.innerHTML = '<h1>No pudimos cargar los datos</h1><p class="aviso">ⓘ Revisá tu conexión y volvé a intentar.</p>' + botonReintentar;
       enlazarActualizar();
     }
   }

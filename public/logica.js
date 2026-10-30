@@ -11,6 +11,15 @@ export const dia = f => new Intl.DateTimeFormat('sv-SE', {
   month: '2-digit',
   day: '2-digit'
 }).format(new Date(f));
+export function fechaAmigable(f, ahora = new Date()) {
+  const fecha = dia(f), hoy = dia(ahora);
+  const distancia = (Date.parse(fecha) - Date.parse(hoy)) / 86400000;
+  if (distancia === 0) return 'Hoy';
+  if (distancia === 1) return 'Mañana';
+  if (distancia === -1) return 'Ayer';
+  const semana = new Intl.DateTimeFormat('es-AR', {timeZone: zona, weekday: 'short'}).format(new Date(f)).replace('.', '');
+  return semana + ' ' + fecha.slice(8) + '/' + fecha.slice(5, 7);
+}
 export const fechaHora = f => dia(f) + ' · ' + hora(f);
 export const competidores = e => e.competitions?.[0]?.competitors || [];
 export const foco = e => competidores(e).some(c => ['202', '9743', '20232'].includes(String(c.team?.id)));
