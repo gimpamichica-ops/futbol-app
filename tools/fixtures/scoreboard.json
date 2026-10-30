@@ -1,0 +1,39 @@
+{
+  "fixtureOrigin": "manual: descarga de ESPN no disponible",
+  "events": [
+    {
+      "id": "123456",
+      "date": "2026-10-29T23:30:00Z",
+      "status": {
+        "displayClock": "67'",
+        "type": {
+          "state": "in",
+          "completed": false,
+          "shortDetail": "67'"
+        }
+      },
+      "competitions": [
+        {
+          "competitors": [
+            {
+              "homeAway": "home",
+              "team": {
+                "id": "9743",
+                "displayName": "Ferro Carril Oeste"
+              },
+              "score": "2"
+            },
+            {
+              "homeAway": "away",
+              "team": {
+                "id": "1",
+                "displayName": "Equipo visitante"
+              },
+              "score": "1"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

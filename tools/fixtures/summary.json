@@ -1,0 +1,166 @@
+{
+  "fixtureOrigin": "manual: estructura documentada en brief",
+  "header": {
+    "id": "123456",
+    "competitions": [
+      {
+        "competitors": [
+          {
+            "homeAway": "home",
+            "team": {
+              "id": "9743",
+              "displayName": "Ferro Carril Oeste"
+            },
+            "score": "2"
+          },
+          {
+            "homeAway": "away",
+            "team": {
+              "id": "1",
+              "displayName": "Equipo visitante"
+            },
+            "score": "1"
+          }
+        ],
+        "date": "2026-10-29T23:30:00Z",
+        "status": {
+          "displayClock": "67'",
+          "type": {
+            "state": "in",
+            "completed": false,
+            "shortDetail": "67'"
+          }
+        }
+      }
+    ]
+  },
+  "gameInfo": {
+    "venue": {
+      "fullName": "Arquitecto Ricardo Etcheverri"
+    },
+    "officials": [
+      {
+        "fullName": "Árbitro de ejemplo"
+      }
+    ]
+  },
+  "boxscore": {
+    "teams": [
+      {
+        "team": {
+          "id": "9743",
+          "displayName": "Ferro Carril Oeste"
+        },
+        "statistics": [
+          {
+            "name": "possessionPct",
+            "displayValue": "55%"
+          },
+          {
+            "name": "totalShots",
+            "displayValue": "10"
+          }
+        ]
+      },
+      {
+        "team": {
+          "id": "1",
+          "displayName": "Equipo visitante"
+        },
+        "statistics": [
+          {
+            "name": "possessionPct",
+            "displayValue": "45%"
+          },
+          {
+            "name": "totalShots",
+            "displayValue": "7"
+          }
+        ]
+      }
+    ]
+  },
+  "rosters": [
+    {
+      "team": {
+        "id": "9743",
+        "displayName": "Ferro Carril Oeste"
+      },
+      "formation": "4-4-2",
+      "roster": [
+        {
+          "starter": true,
+          "jersey": "9",
+          "position": {
+            "abbreviation": "F"
+          },
+          "athlete": {
+            "displayName": "Jugador de ejemplo"
+          },
+          "formationPlace": 9
+        },
+        {
+          "starter": false,
+          "jersey": "18",
+          "position": {
+            "abbreviation": "M"
+          },
+          "athlete": {
+            "displayName": "Suplente de ejemplo"
+          },
+          "subbedIn": true
+        }
+      ]
+    },
+    {
+      "team": {
+        "id": "1",
+        "displayName": "Equipo visitante"
+      },
+      "formation": "4-4-2",
+      "roster": [
+        {
+          "starter": true,
+          "jersey": "9",
+          "position": {
+            "abbreviation": "F"
+          },
+          "athlete": {
+            "displayName": "Jugador de ejemplo"
+          },
+          "formationPlace": 9
+        },
+        {
+          "starter": false,
+          "jersey": "18",
+          "position": {
+            "abbreviation": "M"
+          },
+          "athlete": {
+            "displayName": "Suplente de ejemplo"
+          },
+          "subbedIn": true
+        }
+      ]
+    }
+  ],
+  "keyEvents": [
+    {
+      "clock": {
+        "displayValue": "32'"
+      },
+      "type": {
+        "text": "Gol",
+        "type": "goal"
+      },
+      "text": "Jugador de ejemplo",
+      "participants": [
+        {
+          "athlete": {
+            "displayName": "Jugador de ejemplo"
+          }
+        }
+      ]
+    }
+  ]
+}
