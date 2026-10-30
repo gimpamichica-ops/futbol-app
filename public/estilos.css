@@ -608,3 +608,43 @@ th,td {
   height:100%;
   cursor:pointer;
 }
+
+/* Resumen: goles y tarjetas arriba del minuto a minuto */
+.destacados {
+  list-style: none;
+  margin: 0 0 20px;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.destacados li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.destacados .visitante {
+  flex-direction: row-reverse;
+  text-align: right;
+}
+
+.destacados .icono {
+  font-size: 1.2rem;
+}
+
+.destacados strong {
+  display: block;
+}
+
+.destacados small {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}

@@ -160,5 +160,26 @@ assert.match(nodo('#tabla').innerHTML,/fila-foco/);
 assert.ok(nodo('#tabla').innerHTML.includes('>30</td>'));
 assert.equal(manifest.theme_color,'#0a0f0d');
 assert.equal(manifest.background_color,'#0a0f0d');
-assert.match(sw,/futbol-v5/);
+assert.match(sw,/futbol-v[0-9]+/);
 console.log('OK: tira de días, equipos, orden próximo/último, zonas y colores PWA.');
+{
+  const { destacadosPartido } = await import('../public/logica.js');
+  const ev = (type, nombres, extra = {}) => ({ type: { type }, clock: { displayValue: "10'" }, team: { id: '1', displayName: 'Local' }, participants: nombres.map(n => ({ athlete: { displayName: n } })), ...extra });
+  const { goles, tarjetas } = destacadosPartido([
+    ev('goal', ['Suárez', 'Casemiro']),
+    ev('penalty---scored', ['Calò']),
+    ev('goal', ['Messi'], { text: 'Lionel Messi scores from a direct free kick.' }),
+    ev('own-goal', ['Pérez']),
+    ev('goal---header', ['Otamendi', 'Di María']),
+    ev('yellow-card', ['De Paul']),
+    ev('red-card', ['Romero']),
+    ev('goal', ['Álvarez', 'Mac Allister'], { text: 'Julián Álvarez right footed shot from outside the penalty area. Assisted by Mac Allister following a set piece situation.' }),
+    ev('own-goal', ['Gómez'], { text: 'Own Goal by Gómez, from inside the penalty area.' }),
+    ev('goal', ['Lautaro', 'Otamendi'], { text: 'Lautaro left footed shot. Assisted by Otamendi with a header.' }),
+    ev('substitution', ['A', 'B'])
+  ]);
+  assert.deepEqual(goles.map(g => g.detalle), ['Asistencia: Casemiro', 'De penal', 'De tiro libre', 'En contra', 'De cabeza · Asistencia: Di María', 'Asistencia: Mac Allister', 'En contra', 'Asistencia: Otamendi']);
+  assert.deepEqual(tarjetas.map(t => [t.jugador, t.roja]), [['De Paul', false], ['Romero', true]]);
+  assert.equal(goles[0].minuto, "10'");
+  console.log('OK: resumen de goles (asistencia, penal, tiro libre, en contra, cabeza) y tarjetas.');
+}

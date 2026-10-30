@@ -46,6 +46,35 @@ export function posicion(abbr = '') {
   return '';
 }
 
+const minutoDe = e => {
+  const reloj = e.clock?.displayValue || e.time?.displayValue || '';
+  return reloj && !/['’′]$/.test(reloj) ? reloj + "'" : reloj;
+};
+
+// Goles y tarjetas para el bloque de arriba del Resumen; equipo sirve para alinear local/visitante.
+export function destacadosPartido(eventos) {
+  const goles = [], tarjetas = [];
+  for (const e of eventos) {
+    const tipo = e.type?.type || '';
+    const [autor, asistidor] = (e.participants || []).map(p => p.athlete?.displayName || '');
+    const texto = e.text || '';
+    const base = { minuto: minutoDe(e), jugador: autor || 'Sin dato', equipo: e.team?.displayName || '', equipoId: e.team?.id };
+    if (tipo.startsWith('goal') || tipo.startsWith('penalty---scored') || tipo === 'own-goal') {
+      // Frases del relato de ESPN que describen la acción del goleador (no "penalty area" ni la del asistidor).
+      const detalle = tipo === 'own-goal' || /own goal/i.test(texto) ? 'En contra'
+        : tipo.startsWith('penalty') || /converts the penalty/i.test(texto) ? 'De penal'
+        : tipo.includes('free-kick') || /direct free kick/i.test(texto) ? 'De tiro libre'
+        : '';
+      const cabeza = !detalle && (tipo.includes('header') || /header from/i.test(texto)) ? 'De cabeza' : '';
+      const asistencia = asistidor && !detalle ? 'Asistencia: ' + asistidor : '';
+      goles.push({ ...base, detalle: [detalle, cabeza, asistencia].filter(Boolean).join(' · ') });
+    } else if (tipo === 'yellow-card' || tipo === 'red-card') {
+      tarjetas.push({ ...base, roja: tipo === 'red-card' });
+    }
+  }
+  return { goles, tarjetas };
+}
+
 export function eventosClave(eventos) {
   return eventos.filter(e => {
     const tipo = e.type?.type || '';
